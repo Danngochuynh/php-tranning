@@ -16,6 +16,9 @@ RUN apt-get update \
         libexif-dev \
         gnupg \
         tzdata \
+        build-essential \
+        autoconf \
+        pkg-config \
     && docker-php-ext-install \
         bcmath \
         gd \
@@ -25,22 +28,26 @@ RUN apt-get update \
         exif \
         pdo_mysql \
         mysqli \
-        && docker-php-ext-enable pdo_mysql mysqli
+    && docker-php-ext-enable pdo_mysql mysqli
 
+# Xdebug
 RUN pecl install xdebug \
     && docker-php-ext-enable xdebug
+
+# Redis
+RUN pecl install redis \
+    && docker-php-ext-enable redis
 
 ENV APACHE_DOCUMENT_ROOT /var/www/html
 
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# Install Composer with specified version
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer --version=$COMPOSER_VERSION
+# Install Composer
+RUN curl -sS https://getcomposer.org/installer | php -- \
+    --install-dir=/usr/local/bin \
+    --filename=composer \
+    --version=$COMPOSER_VERSION
 
 RUN a2enmod rewrite
 
 RUN useradd -ms /bin/bash -u 1000 app
-
-#COPY start /usr/local/bin/
-
-#CMD [ "start" ]

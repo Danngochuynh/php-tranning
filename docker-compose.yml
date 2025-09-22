@@ -14,16 +14,14 @@ services:
       - D:/Code/php-tranning/config/backend/php.ini:/usr/local/etc/php/php.ini
       - D:/Code/php-tranning/config/httpd_security.conf:/etc/apache2/conf-available/security.conf
     working_dir: /var/www/html
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: app_web1
     restart: always
     depends_on:
       - web-mysql
+      - web-redis   # redis 
 
   web-mysql:
     container_name: web-mysql
-    image: "mysql:5.7.43"
+    image: mysql:5.7.43
     ports:
       - "3306:3306"
     volumes:
@@ -36,10 +34,14 @@ services:
   web-phpmyadmin:
     container_name: phpmyadmin
     image: phpmyadmin/phpmyadmin
-    links:
-      - web-mysql:mysql
     ports:
       - "8081:80"
     environment:
       PMA_HOST: web-mysql
       MYSQL_ROOT_PASSWORD: root
+
+  web-redis:
+    container_name: web-redis
+    image: redis:6.2
+    ports:
+      - "6379:6379"
