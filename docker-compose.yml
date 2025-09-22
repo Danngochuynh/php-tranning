@@ -17,7 +17,7 @@ services:
     restart: always
     depends_on:
       - web-mysql
-      - web-redis   # redis 
+      - web-redis   # Redis để lưu session
 
   web-mysql:
     container_name: web-mysql
@@ -30,6 +30,7 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: app_web1
       MYSQL_ALLOW_EMPTY_PASSWORD: 1
+    restart: always   # giữ MySQL luôn chạy
 
   web-phpmyadmin:
     container_name: phpmyadmin
@@ -39,9 +40,13 @@ services:
     environment:
       PMA_HOST: web-mysql
       MYSQL_ROOT_PASSWORD: root
+    depends_on:
+      - web-mysql
+    restart: always   
 
   web-redis:
     container_name: web-redis
     image: redis:6.2
     ports:
       - "6379:6379"
+    restart: always   # redis luon chay

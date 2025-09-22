@@ -1,6 +1,11 @@
 <?php
-// Start the session
 session_start();
+
+// Chặn nếu chưa đăng nhập
+if (empty($_SESSION['logged_in'])) {
+    header('Location: login.php');
+    exit;
+}
 
 require_once 'models/UserModel.php';
 $userModel = new UserModel();

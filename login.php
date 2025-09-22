@@ -1,30 +1,27 @@
 <?php
-// Start the session
+// Start session
 session_start();
 
 require_once(__DIR__ . '/models/UserModel.php');
 $userModel = new UserModel();
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $username = $_POST['username'] ?? '';
+    $password = $_POST['password'] ?? '';
 
-if (!empty($_POST['submit'])) {
-    $users = [
-        'username' => $_POST['username'],
-        'password' => $_POST['password']
-    ];
-    $user = NULL;
-    if ($user = $userModel->auth($users['username'], $users['password'])) {
-        //Login successful
-        $_SESSION['id'] = $user[0]['id'];
+    if ($user = $userModel->auth($username, $password)) {
+        // Login successful -> lưu thông tin vào session
+        $_SESSION['id']        = $user[0]['id'];
+        $_SESSION['username']  = $user[0]['name']; 
+        $_SESSION['logged_in'] = true;
+        $_SESSION['message']   = 'Login successful';
 
-        $_SESSION['message'] = 'Login successful';
-        header('location: list_users.php');
-    }else {
-        //Login failed
+        header('Location: list_users.php');
+        exit;
+    } else {
         $_SESSION['message'] = 'Login failed';
     }
-
 }
-
 ?>
 <!DOCTYPE html>
 <html>
