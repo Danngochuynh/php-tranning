@@ -12,17 +12,15 @@ if (!empty($_GET['id'])) {
     $user = $userModel->findUserById($_id);//Update existing user
 }
 
-
 if (!empty($_POST['submit'])) {
-
     if (!empty($_id)) {
         $userModel->updateUser($_POST);
     } else {
         $userModel->insertUser($_POST);
     }
     header('location: list_users.php');
+    exit;
 }
-
 ?>
 <!DOCTYPE html>
 <html>
@@ -33,29 +31,40 @@ if (!empty($_POST['submit'])) {
 <body>
     <?php include 'views/header.php'?>
     <div class="container">
+        <?php if ($user || !isset($_id)) { 
+            $u = $user[0] ?? [];
+        ?>
+            <div class="alert alert-warning" role="alert">
+                User form
+            </div>
+            <form method="POST">
+                <input type="hidden" name="id" value="<?php echo htmlspecialchars($_id ?? '', ENT_QUOTES, 'UTF-8'); ?>">
 
-            <?php if ($user || !isset($_id)) { ?>
-                <div class="alert alert-warning" role="alert">
-                    User form
+                <div class="form-group">
+                    <label for="name">Name</label>
+                    <input class="form-control" name="name" placeholder="Name"
+                        value="<?php echo htmlspecialchars($u['name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                 </div>
-                <form method="POST">
-                    <input type="hidden" name="id" value="<?php echo $_id ?>">
-                    <div class="form-group">
-                        <label for="name">Name</label>
-                        <input class="form-control" name="name" placeholder="Name" value='<?php if (!empty($user[0]['name'])) echo $user[0]['name'] ?>'>
-                    </div>
-                    <div class="form-group">
-                        <label for="password">Password</label>
-                        <input type="password" name="password" class="form-control" placeholder="Password">
-                    </div>
 
-                    <button type="submit" name="submit" value="submit" class="btn btn-primary">Submit</button>
-                </form>
-            <?php } else { ?>
-                <div class="alert alert-success" role="alert">
-                    User not found!
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" name="password" class="form-control" placeholder="Password">
                 </div>
-            <?php } ?>
+
+                <!-- Thêm trường Chi tiết -->
+                <div class="form-group">
+                    <label for="deltail">Chi tiết</label>
+                    <textarea class="form-control" name="deltail" rows="3"
+                        placeholder="Nhập chi tiết"><?php echo htmlspecialchars($u['deltail'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
+                </div>
+
+                <button type="submit" name="submit" value="submit" class="btn btn-primary">Submit</button>
+            </form>
+        <?php } else { ?>
+            <div class="alert alert-success" role="alert">
+                User not found!
+            </div>
+        <?php } ?>
     </div>
 </body>
 </html>

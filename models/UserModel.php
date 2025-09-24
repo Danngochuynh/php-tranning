@@ -4,73 +4,145 @@ require_once(__DIR__ . '/BaseModel.php');
 
 class UserModel extends BaseModel {
 
+    /**
+     * Find user by id (safe prepared statement)
+     * @param int $id
+     * @return array|null
+     */
     public function findUserById($id) {
-        $sql = 'SELECT * FROM users WHERE id = '.$id;
-        $user = $this->select($sql);
-
-        return $user;
-    }
-
-    public function findUser($keyword) {
-        $sql = 'SELECT * FROM users WHERE user_name LIKE %'.$keyword.'%'. ' OR user_email LIKE %'.$keyword.'%';
-        $user = $this->select($sql);
-
-        return $user;
+        $id = (int)$id;
+        $sql = 'SELECT * FROM users WHERE id = ? LIMIT 1';
+        $stmt = self::$_connection->prepare($sql);
+        if (!$stmt) return null;
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $row = $res->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $row;
     }
 
     /**
-     * Authentication user
-     * @param $userName
-     * @param $password
+     * Find user by keyword (search in name or email) - safe
+     * @param string $keyword
+     * @return array
+     */
+    public function findUser($keyword) {
+        $kw = '%' . $keyword . '%';
+        $sql = 'SELECT * FROM users WHERE name LIKE ? OR email LIKE ?';
+        $stmt = self::$_connection->prepare($sql);
+        if (!$stmt) return [];
+        $stmt->bind_param('ss', $kw, $kw);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $rows = $res->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $rows;
+    }
+
+    /**
+     * Authentication user (NOTE: consider using password_hash in production)
+     * @param string $userName
+     * @param string $password
      * @return array
      */
     public function auth($userName, $password) {
         $md5Password = md5($password);
-        $sql = 'SELECT * FROM users WHERE name = "' . $userName . '" AND password = "'.$md5Password.'"';
-
-        $user = $this->select($sql);
-        return $user;
+        $sql = 'SELECT * FROM users WHERE name = ? AND password = ? LIMIT 1';
+        $stmt = self::$_connection->prepare($sql);
+        if (!$stmt) return [];
+        $stmt->bind_param('ss', $userName, $md5Password);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $rows = $res->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $rows;
     }
 
     /**
-     * Delete user by id
-     * @param $id
-     * @return mixed
+     * Delete user by id (safe)
+     * @param int $id
+     * @return bool
      */
     public function deleteUserById($id) {
-        $sql = 'DELETE FROM users WHERE id = '.$id;
-        return $this->delete($sql);
-
+        $id = (int)$id;
+        $sql = 'DELETE FROM users WHERE id = ? LIMIT 1';
+        $stmt = self::$_connection->prepare($sql);
+        if (!$stmt) return false;
+        $stmt->bind_param('i', $id);
+        $ok = $stmt->execute();
+        $stmt->close();
+        return $ok;
     }
 
     /**
-     * Update user
-     * @param $input
-     * @return mixed
+     * Update user (safe) - updates name, password (if provided) and deltail
+     * @param array $input
+     * @return bool
      */
     public function updateUser($input) {
-        $sql = 'UPDATE users SET 
-                 name = "' . mysqli_real_escape_string(self::$_connection, $input['name']) .'", 
-                 password="'. md5($input['password']) .'"
-                WHERE id = ' . $input['id'];
+        // Normalize inputs
+        $id = isset($input['id']) ? (int)$input['id'] : 0;
+        $name = $input['name'] ?? '';
+        $deltail = $input['deltail'] ?? '';
+        // If password provided and non-empty, update it; otherwise keep existing
+        $password = $input['password'] ?? '';
 
-        $user = $this->update($sql);
+        if ($id <= 0) return false;
 
-        return $user;
+        if ($password !== '') {
+            $md5 = md5($password);
+            $sql = 'UPDATE users SET name = ?, password = ?, deltail = ? WHERE id = ?';
+            $stmt = self::$_connection->prepare($sql);
+            if (!$stmt) return false;
+            $stmt->bind_param('sssi', $name, $md5, $deltail, $id);
+        } else {
+            $sql = 'UPDATE users SET name = ?, deltail = ? WHERE id = ?';
+            $stmt = self::$_connection->prepare($sql);
+            if (!$stmt) return false;
+            $stmt->bind_param('ssi', $name, $deltail, $id);
+        }
+
+        $ok = $stmt->execute();
+        $stmt->close();
+        return $ok;
     }
 
     /**
-     * Insert user
-     * @param $input
-     * @return mixed
+     * Insert user (safe) - includes deltail
+     * @param array $input
+     * @return bool|int (insert id or false)
      */
     public function insertUser($input) {
-        $sql = "INSERT INTO `app_web1`.`users` (`name`, `password`) VALUES (" .
-                "'" . $input['name'] . "', '".md5($input['password'])."')";
+        $name = $input['name'] ?? '';
+        $password = $input['password'] ?? '';
+        $deltail = $input['deltail'] ?? '';
+        // default values for optional columns if not provided
+        $fullname = $input['fullname'] ?? null;
+        $email = $input['email'] ?? null;
+        $type = $input['type'] ?? 'user';
 
-        $user = $this->insert($sql);
+        $md5 = md5($password);
 
-        return $user;
+        $sql = 'INSERT INTO users (name, fullname, email, type, password, deltail) VALUES (?,?,?,?,?,?)';
+        $stmt = self::$_connection->prepare($sql);
+        if (!$stmt) return false;
+        // use nulls if needed: bind_param doesn't accept null types easily; pass empty strings or NULL via variables
+        // We'll coerce null to empty string for fullname/email to avoid errors if columns are NOT NULL
+        $fullname_param = $fullname ?? '';
+        $email_param = $email ?? '';
+        $type_param = $type ?? 'user';
+
+        $stmt->bind_param('ssssss', $name, $fullname_param, $email_param, $type_param, $md5, $deltail);
+
+        $ok = $stmt->execute();
+        if (!$ok) {
+            $stmt->close();
+            return false;
+        }
+        $insert_id = self::$_connection->insert_id;
+        $stmt->close();
+        return $insert_id;
     }
 
     /**
@@ -79,22 +151,21 @@ class UserModel extends BaseModel {
      * @return array
      */
     public function getUsers($params = []) {
-        //Keyword
         if (!empty($params['keyword'])) {
-            $sql = 'SELECT * FROM users WHERE name LIKE "%' . $params['keyword'] .'%"';
-
-            //Keep this line to use Sql Injection
-            //Don't change
-            //Example keyword: abcef%";TRUNCATE banks;##
-            $users = self::$_connection->multi_query($sql);
-
-            //Get data
-            $users = $this->query($sql);
+            $kw = '%' . $params['keyword'] . '%';
+            $sql = 'SELECT * FROM users WHERE name LIKE ?';
+            $stmt = self::$_connection->prepare($sql);
+            if (!$stmt) return [];
+            $stmt->bind_param('s', $kw);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            $rows = $res->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+            return $rows;
         } else {
+            // fallback to safe select using BaseModel->select if available
             $sql = 'SELECT * FROM users';
-            $users = $this->select($sql);
+            return $this->select($sql);
         }
-
-        return $users;
     }
 }
