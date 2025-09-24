@@ -9,7 +9,7 @@ $_id = NULL;
 
 if (!empty($_GET['id'])) {
     $_id = $_GET['id'];
-    $user = $userModel->findUserById($_id);//Update existing user
+    $user = $userModel->findUserById($_id); //Update existing user
 }
 
 if (!empty($_POST['submit'])) {
@@ -24,14 +24,16 @@ if (!empty($_POST['submit'])) {
 ?>
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>User form</title>
     <?php include 'views/meta.php' ?>
 </head>
+
 <body>
-    <?php include 'views/header.php'?>
+    <?php include 'views/header.php' ?>
     <div class="container">
-        <?php if ($user || !isset($_id)) { 
+        <?php if ($user || !isset($_id)) {
             $u = $user[0] ?? [];
         ?>
             <div class="alert alert-warning" role="alert">
@@ -45,19 +47,10 @@ if (!empty($_POST['submit'])) {
                     <input class="form-control" name="name" placeholder="Name"
                         value="<?php echo htmlspecialchars($u['name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                 </div>
-
                 <div class="form-group">
                     <label for="password">Password</label>
                     <input type="password" name="password" class="form-control" placeholder="Password">
                 </div>
-
-                <!-- Thêm trường Chi tiết -->
-                <div class="form-group">
-                    <label for="deltail">Chi tiết</label>
-                    <textarea class="form-control" name="deltail" rows="3"
-                        placeholder="Nhập chi tiết"><?php echo htmlspecialchars($u['deltail'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
-                </div>
-
                 <button type="submit" name="submit" value="submit" class="btn btn-primary">Submit</button>
             </form>
         <?php } else { ?>
@@ -67,4 +60,5 @@ if (!empty($_POST['submit'])) {
         <?php } ?>
     </div>
 </body>
+
 </html>

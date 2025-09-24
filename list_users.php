@@ -4,7 +4,9 @@ session_start();
 
 require_once 'models/UserModel.php';
 $userModel = new UserModel();
-
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 $params = [];
 if (!empty($_GET['keyword'])) {
     $params['keyword'] = $_GET['keyword'];
